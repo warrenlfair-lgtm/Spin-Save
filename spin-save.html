@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Spin & Save (1–100)</title>
+  <style>
+    :root { --bg:#0b1220; --card:#111a2e; --text:#e5e7eb; --muted:#9ca3af; --gold:#fbbf24; --green:#22c55e; --red:#ef4444; }
+    html,body{height:100%; margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: radial-gradient(1200px 600px at 50% 0%, #1a2a5a 0%, var(--bg) 55%); color:var(--text);}
+    .wrap{max-width:920px; margin:0 auto; padding:18px;}
+    h1{margin:8px 0 0; text-align:center; letter-spacing:.08em; font-size:28px;}
+    .sub{margin:6px 0 18px; text-align:center; color:var(--muted); font-size:14px;}
+    .grid{display:grid; grid-template-columns: 1fr; gap:14px;}
+    @media (min-width: 860px){ .grid{grid-template-columns: 1.2fr .8fr;} }
+    .card{background:rgba(17,26,46,.9); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,.25);}
+    .spinArea{display:flex; flex-direction:column; align-items:center; gap:12px; padding:10px;}
+    .wheel{
+      width:220px; height:220px; border-radius:50%;
+      background: conic-gradient(from 0deg, #22c55e, #3b82f6, #f59e0b, #a855f7, #ef4444, #22c55e);
+      display:grid; place-items:center; position:relative;
+      border:6px solid rgba(255,255,255,.12);
+      box-shadow: 0 18px 40px rgba(0,0,0,.35);
+      transform: rotate(0deg);
+    }
+    .wheel:after{
+      content:""; position:absolute; top:-10px; left:50%; transform:translateX(-50%);
+      width:0; height:0; border-left:10px solid transparent; border-right:10px solid transparent;
+      border-bottom:18px solid var(--gold);
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,.4));
+    }
+    .btnRow{display:flex; flex-wrap:wrap; gap:10px; justify-content:center;}
+    button{
+      border:0; padding:12px 14px; border-radius:12px; font-weight:700; letter-spacing:.02em;
+      background:#334155; color:var(--text); cursor:pointer;
+    }
+    button.primary{background: linear-gradient(90deg, #f59e0b, #fbbf24); color:#111827;}
+    button.good{background: linear-gradient(90deg, #16a34a, #22c55e); color:#052e16;}
+    button.bad{background: linear-gradient(90deg, #dc2626, #ef4444); color:#3f0a0a;}
+    button:disabled{opacity:.5; cursor:not-allowed;}
+    .result{
+      width:100%; text-align:center; padding:14px 10px; border-radius:14px;
+      background: rgba(0,0,0,.22); border: 1px dashed rgba(255,255,255,.18);
+    }
+    .result .label{color:var(--muted); font-size:12px; letter-spacing:.12em;}
+    .result .value{font-size:46px; margin-top:6px; font-weight:900; color:var(--gold); text-shadow: 0 6px 18px rgba(0,0,0,.35);}
+    .stats{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .stat{padding:12px; border-radius:14px; background: rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.08);}
+    .stat .k{color:var(--muted); font-size:12px; letter-spacing:.10em;}
+    .stat .v{margin-top:6px; font-size:22px; font-weight:800;}
+    .progress{margin-top:10px; height:12px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden;}
+    .bar{height:100%; width:0%; background:linear-gradient(90deg,#22c55e,#fbbf24); transition:width .35s ease;}
+    .numbers{
+      display:grid; grid-template-columns: repeat(10, 1fr); gap:6px; margin-top:12px;
+      user-select:none;
+    }
+    .num{
+      padding:8px 0; text-align:center; border-radius:10px; font-weight:800; font-size:13px;
+      background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08);
+    }
+    .done{background: rgba(0,0,0,.45); color:#6b7280; border-color: rgba(255,255,255,.06); text-decoration: line-through;}
+    .foot{margin-top:10px; color:var(--muted); font-size:12px; text-align:center;}
+    .toast{margin-top:10px; text-align:center; min-height:18px; color:#d1d5db;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>SPIN & SAVE</h1>
+    <div class="sub">Digital 100-Envelope Challenge • Spin anytime • Auto-scoreboard • No repeats</div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="spinArea">
+          <div class="wheel" id="wheel" aria-hidden="true"></div>
+
+          <div class="result">
+            <div class="label">CURRENT SPIN</div>
+            <div class="value" id="currentValue">$—</div>
+          </div>
+
+          <div class="btnRow">
+            <button class="primary" id="spinBtn">SPIN</button>
+            <button class="good" id="completeBtn" disabled>MARK COMPLETE</button>
+            <button id="undoBtn" disabled>UNDO LAST</button>
+            <button class="bad" id="resetBtn">RESET</button>
+          </div>
+
+          <div class="toast" id="toast"></div>
+          <div class="foot">Tip: Add to Home Screen for an “app” feel.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stats">
+          <div class="stat">
+            <div class="k">COMPLETED</div>
+            <div class="v" id="completedStat">0 / 100</div>
+          </div>
+          <div class="stat">
+            <div class="k">TOTAL SAVED</div>
+            <div class="v" id="savedStat">$0</div>
+          </div>
+          <div class="stat">
+            <div class="k">REMAINING</div>
+            <div class="v" id="remainingStat">$5,050</div>
+          </div>
+          <div class="stat">
+            <div class="k">LAST COMPLETED</div>
+            <div class="v" id="lastStat">—</div>
+          </div>
+        </div>
+        <div class="progress" title="Progress">
+          <div class="bar" id="bar"></div>
+        </div>
+
+        <div class="numbers" id="numbers"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const TOTAL = 100;
+  const TOTAL_SUM = (TOTAL * (TOTAL + 1)) / 2; // 5050
+
+  const els = {
+    wheel: document.getElementById('wheel'),
+    spinBtn: document.getElementById('spinBtn'),
+    completeBtn: document.getElementById('completeBtn'),
+    undoBtn: document.getElementById('undoBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+    currentValue: document.getElementById('currentValue'),
+    completedStat: document.getElementById('completedStat'),
+    savedStat: document.getElementById('savedStat'),
+    remainingStat: document.getElementById('remainingStat'),
+    lastStat: document.getElementById('lastStat'),
+    numbers: document.getElementById('numbers'),
+    bar: document.getElementById('bar'),
+    toast: document.getElementById('toast')
+  };
+
+  const STORAGE_KEY = "spin_save_100_v1";
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { done: new Set(), current: null, history: [] };
+      const parsed = JSON.parse(raw);
+      return {
+        done: new Set(parsed.done || []),
+        current: parsed.current ?? null,
+        history: parsed.history || []
+      };
+    } catch {
+      return { done: new Set(), current: null, history: [] };
+    }
+  }
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      done: Array.from(state.done),
+      current: state.current,
+      history: state.history
+    }));
+  }
+
+  let state = load();
+
+  function fmt(n){ return "$" + n.toLocaleString(); }
+
+  function renderNumbers() {
+    els.numbers.innerHTML = "";
+    for (let i = 1; i <= TOTAL; i++) {
+      const d = document.createElement('div');
+      d.className = "num" + (state.done.has(i) ? " done" : "");
+      d.textContent = i;
+      els.numbers.appendChild(d);
+    }
+  }
+
+  function renderStats() {
+    const completed = state.done.size;
+    const saved = Array.from(state.done).reduce((a,b)=>a+b,0);
+    const remaining = TOTAL_SUM - saved;
+
+    els.completedStat.textContent = `${completed} / ${TOTAL}`;
+    els.savedStat.textContent = fmt(saved);
+    els.remainingStat.textContent = fmt(remaining);
+
+    const last = state.history.length ? state.history[state.history.length - 1] : null;
+    els.lastStat.textContent = last ? fmt(last) : "—";
+
+    els.bar.style.width = `${(completed / TOTAL) * 100}%`;
+
+    els.completeBtn.disabled = (state.current == null);
+    els.undoBtn.disabled = (state.history.length === 0);
+  }
+
+  function setCurrent(n) {
+    state.current = n;
+    els.currentValue.textContent = n == null ? "$—" : fmt(n);
+    els.completeBtn.disabled = (n == null);
+    save();
+  }
+
+  function toast(msg) {
+    els.toast.textContent = msg;
+    if (msg) setTimeout(()=>{ if (els.toast.textContent === msg) els.toast.textContent=""; }, 2200);
+  }
+
+  function availableNumbers() {
+    const arr = [];
+    for (let i=1;i<=TOTAL;i++) if (!state.done.has(i)) arr.push(i);
+    return arr;
+  }
+
+  function randPick(arr) {
+    const idx = Math.floor(Math.random() * arr.length);
+    return arr[idx];
+  }
+
+  function spin() {
+    const avail = availableNumbers();
+    if (avail.length === 0) {
+      toast("You finished all 100! 🎉");
+      setCurrent(null);
+      return;
+    }
+    const picked = randPick(avail);
+
+    const turns = 4 + Math.random() * 3;
+    const deg = 360 * turns + (picked * 3.6);
+    els.wheel.animate(
+      [{ transform: "rotate(0deg)" }, { transform: `rotate(${deg}deg)` }],
+      { duration: 900, easing: "cubic-bezier(.2,.8,.2,1)" }
+    );
+
+    setTimeout(() => {
+      setCurrent(picked);
+      toast(`Spin result: ${fmt(picked)} — transfer it, then mark complete.`);
+      renderStats();
+    }, 900);
+  }
+
+  function markComplete() {
+    if (state.current == null) return;
+    const n = state.current;
+    state.done.add(n);
+    state.history.push(n);
+    setCurrent(null);
+    save();
+    renderNumbers();
+    renderStats();
+    toast(`Completed ${fmt(n)} ✅`);
+  }
+
+  function undoLast() {
+    const last = state.history.pop();
+    if (last == null) return;
+    state.done.delete(last);
+    setCurrent(null);
+    save();
+    renderNumbers();
+    renderStats();
+    toast(`Undid ${fmt(last)} ↩️`);
+  }
+
+  function resetAll() {
+    if (!confirm("Reset everything? This clears all progress on this device.")) return;
+    state = { done: new Set(), current: null, history: [] };
+    save();
+    renderNumbers();
+    renderStats();
+    setCurrent(null);
+    toast("Reset complete.");
+  }
+
+  els.spinBtn.addEventListener('click', spin);
+  els.completeBtn.addEventListener('click', markComplete);
+  els.undoBtn.addEventListener('click', undoLast);
+  els.resetBtn.addEventListener('click', resetAll);
+
+  renderNumbers();
+  renderStats();
+  if (state.current != null) els.currentValue.textContent = fmt(state.current);
+</script>
+</body>
+</html>
